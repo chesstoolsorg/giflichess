@@ -117,7 +117,7 @@ func getTheme(r *http.Request) string {
 
 func getSize(r *http.Request) int {
 	if s, ok := r.URL.Query()["size"]; ok && len(s) == 1 {
-		if size, err := strconv.Atoi(s[0]); err == nil && size >= 200 && size <= 2000 {
+		if size, err := strconv.Atoi(s[0]); err == nil && size >= 200 && size <= 800 {
 			return size
 		}
 	}

@@ -93,6 +93,18 @@ func blackName(game *chess.Game) string {
 // GenerateGIF will use *chess.Game to write a gif into an io.Writer
 // This uses inkscape & imagemagick as a dependency
 func GenerateGIF(game *chess.Game, gameID string, reversed bool, speed float64, theme string, size int, out io.Writer, maxConcurrency int) error {
+	if size <= 0 {
+		size = 480
+	}
+	if maxConcurrency < 1 {
+		maxConcurrency = 1
+	}
+	// Higher resolutions significantly increase per-frame memory usage.
+	// Scale down worker count so medium/large exports remain stable.
+	effectiveConcurrency := maxConcurrency * 320 / size
+	if effectiveConcurrency < 1 {
+		effectiveConcurrency = 1
+	}
 
 	// Set theme colors
 	if themeColors, exists := themes[theme]; exists {
@@ -105,7 +117,7 @@ func GenerateGIF(game *chess.Game, gameID string, reversed bool, speed float64, 
 	}
 
 	// Generate PNGs
-	pool := gopool.NewPool(maxConcurrency)
+	pool := gopool.NewPool(effectiveConcurrency)
 	for i, pos := range game.Positions() {
 		pool.Add(1)
 		go drawPNG(pos, whiteName(game), blackName(game), reversed, size, fileBaseFor(gameID, i), pool)
