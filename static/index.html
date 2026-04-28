@@ -381,7 +381,8 @@
                     downloadLink.href = gifUrl;
                     downloadLink.download = 'chess-game.gif';
                 } else {
-                    throw new Error('Failed to generate GIF');
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'Failed to generate GIF');
                 }
             } catch (error) {
                 // Hide loading and show error
