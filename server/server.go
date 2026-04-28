@@ -76,7 +76,7 @@ func lichessGifHandler(maxConcurrency int) func(http.ResponseWriter, *http.Reque
 			w.Header().Set("Cache-Control", "no-cache")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 		}
-		err = gifmaker.GenerateGIF(game, gameID, getReversed(r), getSpeed(r), getTheme(r), getSize(r), w, maxConcurrency)
+		err = gifmaker.GenerateGIF(game, gameID, getReversed(r), getSpeed(r), getTheme(r), w, maxConcurrency)
 		if err != nil {
 			status = 500
 			w.Header().Set("Cache-Control", "no-cache")
@@ -113,15 +113,6 @@ func getTheme(r *http.Request) string {
 		}
 	}
 	return "brown" // default theme
-}
-
-func getSize(r *http.Request) int {
-	if s, ok := r.URL.Query()["size"]; ok && len(s) == 1 {
-		if size, err := strconv.Atoi(s[0]); err == nil && size >= 200 && size <= 800 {
-			return size
-		}
-	}
-	return 480 // default board width
 }
 
 func getIDFromQuery(r *http.Request) (string, error) {

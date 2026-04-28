@@ -92,18 +92,9 @@ func blackName(game *chess.Game) string {
 
 // GenerateGIF will use *chess.Game to write a gif into an io.Writer
 // This uses inkscape & imagemagick as a dependency
-func GenerateGIF(game *chess.Game, gameID string, reversed bool, speed float64, theme string, size int, out io.Writer, maxConcurrency int) error {
-	if size <= 0 {
-		size = 480
-	}
+func GenerateGIF(game *chess.Game, gameID string, reversed bool, speed float64, theme string, out io.Writer, maxConcurrency int) error {
 	if maxConcurrency < 1 {
 		maxConcurrency = 1
-	}
-	// Higher resolutions significantly increase per-frame memory usage.
-	// Scale down worker count so medium/large exports remain stable.
-	effectiveConcurrency := maxConcurrency * 320 / size
-	if effectiveConcurrency < 1 {
-		effectiveConcurrency = 1
 	}
 
 	// Set theme colors
@@ -117,10 +108,10 @@ func GenerateGIF(game *chess.Game, gameID string, reversed bool, speed float64, 
 	}
 
 	// Generate PNGs
-	pool := gopool.NewPool(effectiveConcurrency)
+	pool := gopool.NewPool(maxConcurrency)
 	for i, pos := range game.Positions() {
 		pool.Add(1)
-		go drawPNG(pos, whiteName(game), blackName(game), reversed, size, fileBaseFor(gameID, i), pool)
+		go drawPNG(pos, whiteName(game), blackName(game), reversed, fileBaseFor(gameID, i), pool)
 		defer cleanup(gameID, i)
 	}
 	pool.Wait()
@@ -215,12 +206,8 @@ func encodeGIFImage(gameID string, i int) (*image.Paletted, error) {
 	return palettedImage, nil
 }
 
-func drawPNG(pos *chess.Position, whiteName string, blackName string, reversed bool, size int, filebase string, pool *gopool.GoPool) error {
+func drawPNG(pos *chess.Position, whiteName string, blackName string, reversed bool, filebase string, pool *gopool.GoPool) error {
 	defer pool.Done()
-
-	if size <= 0 {
-		size = 480
-	}
 
 	// create file
 	f, err := os.Create(filebase + ".svg")
@@ -247,7 +234,6 @@ func drawPNG(pos *chess.Position, whiteName string, blackName string, reversed b
 	cmd := exec.Command(
 		"dbus-run-session",
 		"inkscape",
-		"--export-width="+fmt.Sprintf("%d", size),
 		"--export-filename="+filebase+".png",
 		filebase+".svg",
 	)
