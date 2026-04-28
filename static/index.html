@@ -206,6 +206,19 @@
                         </div>
 
                         <div>
+                            <label for="size" class="block text-sm font-medium mb-2">GIF Size</label>
+                            <select id="size"
+                                    name="size"
+                                    class="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-ring">
+                                <option value="320">Small (320px)</option>
+                                <option value="480" selected>Medium (480px)</option>
+                                <option value="640">Large (640px)</option>
+                                <option value="800">XL (800px)</option>
+                            </select>
+                            <p class="text-sm text-muted-foreground mt-1">Sets the board width in pixels for the generated GIF.</p>
+                        </div>
+
+                        <div>
                             <button type="submit" 
                                     class="w-full bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -312,6 +325,7 @@
             const gameUrl = formData.get('gameUrl');
             const speed = formData.get('speed');
             const theme = formData.get('theme');
+            const size = formData.get('size');
             
             // Show loading
             document.getElementById('loading').classList.remove('hidden');
@@ -329,6 +343,9 @@
                 if (theme !== 'brown') {
                     params.append('theme', theme);
                 }
+                if (size !== '480') {
+                    params.append('size', size);
+                }
                 
                 if (params.toString()) {
                     apiUrl += '?' + params.toString();
@@ -342,7 +359,8 @@
                     body: JSON.stringify({
                         url: gameUrl,
                         speed: parseFloat(speed),
-                        theme: theme
+                        theme: theme,
+                        size: parseInt(size, 10)
                     })
                 });
                 

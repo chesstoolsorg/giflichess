@@ -92,7 +92,7 @@ func blackName(game *chess.Game) string {
 
 // GenerateGIF will use *chess.Game to write a gif into an io.Writer
 // This uses inkscape & imagemagick as a dependency
-func GenerateGIF(game *chess.Game, gameID string, reversed bool, speed float64, theme string, out io.Writer, maxConcurrency int) error {
+func GenerateGIF(game *chess.Game, gameID string, reversed bool, speed float64, theme string, size int, out io.Writer, maxConcurrency int) error {
 
 	// Set theme colors
 	if themeColors, exists := themes[theme]; exists {
@@ -108,7 +108,7 @@ func GenerateGIF(game *chess.Game, gameID string, reversed bool, speed float64, 
 	pool := gopool.NewPool(maxConcurrency)
 	for i, pos := range game.Positions() {
 		pool.Add(1)
-		go drawPNG(pos, whiteName(game), blackName(game), reversed, fileBaseFor(gameID, i), pool)
+		go drawPNG(pos, whiteName(game), blackName(game), reversed, size, fileBaseFor(gameID, i), pool)
 		defer cleanup(gameID, i)
 	}
 	pool.Wait()
@@ -203,7 +203,7 @@ func encodeGIFImage(gameID string, i int) (*image.Paletted, error) {
 	return palettedImage, nil
 }
 
-func drawPNG(pos *chess.Position, whiteName string, blackName string, reversed bool, filebase string, pool *gopool.GoPool) error {
+func drawPNG(pos *chess.Position, whiteName string, blackName string, reversed bool, size int, filebase string, pool *gopool.GoPool) error {
 	defer pool.Done()
 
 	// create file
@@ -228,7 +228,14 @@ func drawPNG(pos *chess.Position, whiteName string, blackName string, reversed b
 	f.Close()
 
 	// Use inkscape to convert svg -> png
-	cmd := exec.Command("dbus-run-session", "inkscape", "--export-filename="+filebase+".png", filebase+".svg")
+	cmd := exec.Command(
+		"dbus-run-session",
+		"inkscape",
+		"--export-width="+fmt.Sprintf("%d", size),
+		"--export-height="+fmt.Sprintf("%d", size),
+		"--export-filename="+filebase+".png",
+		filebase+".svg",
+	)
 	// Suppress GTK warnings in headless environment
 	cmd.Env = append(os.Environ(), "GTK_BACKEND=cairo")
 	if r := cmd.Run(); r != nil {

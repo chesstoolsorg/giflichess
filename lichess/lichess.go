@@ -25,7 +25,7 @@ func GenerateFile(urlOrID string, reversed bool, outFile string, maxConcurrency 
 	}
 	defer f.Close()
 
-	gifmaker.GenerateGIF(game, gameID, reversed, 1.0, "brown", f, maxConcurrency)
+	gifmaker.GenerateGIF(game, gameID, reversed, 1.0, "brown", 480, f, maxConcurrency)
 	fmt.Printf("gif successfully outputed to %s\n", outFile)
 	return nil
 }
