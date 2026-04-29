@@ -174,9 +174,8 @@
                                    id="gameUrl" 
                                    name="gameUrl"
                                    placeholder="https://lichess.org/xxxxxxxx"
-                                   required
                                    class="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-ring">
-                            <p class="text-sm text-muted-foreground mt-1">Enter the full URL of a Lichess game, for example https://lichess.org/LebWVal9</p>
+                            <p class="text-sm text-muted-foreground mt-1">Enter a Lichess game URL, or leave this blank and paste a PGN below.</p>
                         </div>
 
                         <div>
@@ -324,6 +323,12 @@
             // Show loading
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('result').classList.add('hidden');
+
+            if ((!gameUrl || gameUrl.toString().trim() === '') && (!pgn || pgn.toString().trim() === '')) {
+                document.getElementById('loading').classList.add('hidden');
+                alert('Please provide either a Lichess game URL or a PGN.');
+                return;
+            }
             
             try {
                 let response;

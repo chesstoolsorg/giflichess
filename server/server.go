@@ -153,19 +153,11 @@ func pgnHandler(maxConcurrency int) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		// Parse form values if any
-		r.ParseForm()
-
-		pgnText := r.FormValue("pgn")
-		if strings.TrimSpace(pgnText) == "" {
-			// try to read raw body
-			body, err := io.ReadAll(r.Body)
-			if err != nil {
-				status = 400
-				http.Error(w, "could not read body", status)
-				return
-			}
-			pgnText = strings.TrimSpace(string(body))
+		pgnText, err := readPGNInput(r)
+		if err != nil {
+			status = 400
+			http.Error(w, err.Error(), status)
+			return
 		}
 
 		if pgnText == "" {
@@ -220,4 +212,27 @@ func pgnHandler(maxConcurrency int) func(http.ResponseWriter, *http.Request) {
 
 		status = 200
 	}
+}
+
+func readPGNInput(r *http.Request) (string, error) {
+	contentType := r.Header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			return "", fmt.Errorf("could not parse uploaded form: %w", err)
+		}
+		return strings.TrimSpace(r.FormValue("pgn")), nil
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return "", fmt.Errorf("could not parse form: %w", err)
+	}
+	if pgn := strings.TrimSpace(r.FormValue("pgn")); pgn != "" {
+		return pgn, nil
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return "", fmt.Errorf("could not read body: %w", err)
+	}
+	return strings.TrimSpace(string(body)), nil
 }
