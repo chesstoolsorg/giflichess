@@ -2,11 +2,13 @@ package lichess
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/aherve/giflichess/gifmaker"
 	"github.com/notnil/chess"
@@ -36,12 +38,25 @@ func GetGame(pathOrID string) (*chess.Game, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	resp, err := http.Get("https://lichess.org/game/export/" + id)
+	// Use a client with timeout and a User-Agent to avoid being blocked by some hosts
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("GET", "https://lichess.org/game/export/"+id, nil)
 	if err != nil {
 		return nil, id, err
 	}
+	req.Header.Set("User-Agent", "giflichess/cli")
 
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, id, err
+	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		// read a small prefix of the body to include in the error message
+		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, id, fmt.Errorf("lichess responded with status %d: %s", resp.StatusCode, strings.ReplaceAll(strings.TrimSpace(string(snippet)), "\n", " "))
+	}
 
 	pgn, err := chess.PGN(resp.Body)
 	if err != nil {
