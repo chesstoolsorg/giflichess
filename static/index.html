@@ -179,6 +179,13 @@
                             <p class="text-sm text-muted-foreground mt-1">Enter the full URL of a Lichess game, for example https://lichess.org/LebWVal9</p>
                         </div>
 
+                        <div>
+                            <label for="pgn" class="block text-sm font-medium mb-2">Or paste PGN</label>
+                            <textarea id="pgn" name="pgn" rows="8" placeholder="Paste a full PGN here (including headers and move list)"
+                                      class="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-ring"></textarea>
+                            <p class="text-sm text-muted-foreground mt-1">Paste the PGN text directly to generate a GIF without using Lichess.</p>
+                        </div>
+
                         <div class="grid md:grid-cols-2 gap-6">
                             <div>
                                 <label for="speed" class="block text-sm font-medium mb-2">Animation Speed</label>
@@ -310,6 +317,7 @@
             
             const formData = new FormData(e.target);
             const gameUrl = formData.get('gameUrl');
+            const pgn = formData.get('pgn');
             const speed = formData.get('speed');
             const theme = formData.get('theme');
             
@@ -318,33 +326,47 @@
             document.getElementById('result').classList.add('hidden');
             
             try {
-                // Build URL with query parameters
-                const gameId = gameUrl.split('/').pop();
-                let apiUrl = `/api/lichess/${gameId}`;
-                const params = new URLSearchParams();
-                
-                if (speed !== '1') {
-                    params.append('speed', speed);
-                }
-                if (theme !== 'brown') {
-                    params.append('theme', theme);
-                }
-                
-                if (params.toString()) {
-                    apiUrl += '?' + params.toString();
-                }
+                let response;
+                // If user pasted a PGN, prefer the PGN endpoint
+                if (pgn && pgn.toString().trim() !== '') {
+                    const fd = new FormData();
+                    fd.append('pgn', pgn.toString());
+                    if (speed) fd.append('speed', speed.toString());
+                    if (theme) fd.append('theme', theme.toString());
 
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        url: gameUrl,
-                        speed: parseFloat(speed),
-                        theme: theme
-                    })
-                });
+                    response = await fetch('/api/pgn', {
+                        method: 'POST',
+                        body: fd
+                    });
+                } else {
+                    // Build URL with query parameters for lichess
+                    const gameId = gameUrl.split('/').pop();
+                    let apiUrl = `/api/lichess/${gameId}`;
+                    const params = new URLSearchParams();
+
+                    if (speed !== '1') {
+                        params.append('speed', speed);
+                    }
+                    if (theme !== 'brown') {
+                        params.append('theme', theme);
+                    }
+
+                    if (params.toString()) {
+                        apiUrl += '?' + params.toString();
+                    }
+
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            url: gameUrl,
+                            speed: parseFloat(speed),
+                            theme: theme
+                        })
+                    });
+                }
                 
                 if (response.ok) {
                     const blob = await response.blob();

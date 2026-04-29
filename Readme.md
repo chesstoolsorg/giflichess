@@ -75,3 +75,16 @@ This application is configured for easy Heroku deployment using `heroku.yml`:
    ```bash
    heroku logs --tail
    ```
+
+
+### Local Deployment 
+
+# Build and run the server:
+
+- from repo root
+go build -o giflichess ./...
+- run server on port 8080 with default concurrency
+./giflichess serve --port 8080 --concurrency 10
+
+# Run with go run
+go run main.go serve --port 8080 --concurrency 10

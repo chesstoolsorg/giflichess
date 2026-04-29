@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/aherve/giflichess/gifmaker"
 	"github.com/aherve/giflichess/lichess"
+	"github.com/notnil/chess"
 )
 
 // Serve starts a server
@@ -22,6 +24,7 @@ func Serve(port, maxConcurrency int) {
 	// API endpoints
 	http.HandleFunc("/api/ping", pingHandler)
 	http.HandleFunc("/api/lichess/", lichessGifHandler(maxConcurrency))
+	http.HandleFunc("/api/pgn", pgnHandler(maxConcurrency))
 
 	log.Printf("starting %s server on port %v with concurrency=%v\n", env(), port, maxConcurrency)
 	log.Printf("Web UI available at: http://localhost:%v\n", port)
@@ -133,4 +136,88 @@ func env() string {
 		return fromEnv
 	}
 	return "development"
+}
+
+// pgnHandler accepts POST requests containing a PGN (form field `pgn` or raw body)
+// validates the PGN by attempting to parse it, and returns a generated GIF.
+func pgnHandler(maxConcurrency int) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		var status int
+		logf := func() { log.Println(r.Method, r.URL, status, time.Since(start)) }
+		defer logf()
+
+		if r.Method != http.MethodPost {
+			status = 405
+			http.Error(w, "method not allowed", status)
+			return
+		}
+
+		// Parse form values if any
+		r.ParseForm()
+
+		pgnText := r.FormValue("pgn")
+		if strings.TrimSpace(pgnText) == "" {
+			// try to read raw body
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				status = 400
+				http.Error(w, "could not read body", status)
+				return
+			}
+			pgnText = strings.TrimSpace(string(body))
+		}
+
+		if pgnText == "" {
+			status = 400
+			http.Error(w, "No PGN provided. Send form field 'pgn' or raw PGN in the request body.", status)
+			return
+		}
+
+		// Validate PGN by parsing
+		parsed, err := chess.PGN(strings.NewReader(pgnText))
+		if err != nil {
+			status = 400
+			http.Error(w, "invalid PGN: "+err.Error(), status)
+			return
+		}
+
+		game := chess.NewGame(parsed)
+		gameID := "pgn-" + strconv.FormatInt(time.Now().Unix(), 10)
+
+		// Options from form/query
+		reversed := r.FormValue("reversed") == "true"
+
+		speed := 1.0
+		if s := r.FormValue("speed"); s != "" {
+			if v, err := strconv.ParseFloat(s, 64); err == nil && v > 0 && v <= 10 {
+				speed = v
+			}
+		}
+
+		theme := r.FormValue("theme")
+		validThemes := map[string]bool{"brown": true, "blue": true, "green": true, "purple": true}
+		if !validThemes[theme] {
+			theme = "brown"
+		}
+
+		// write gif
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s.gif\"", gameID))
+		w.Header().Set("filename", gameID+".gif")
+		if env() == "production" {
+			w.Header().Set("Cache-Control", cacheControl(1296000))
+		} else {
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+
+		if err := gifmaker.GenerateGIF(game, gameID, reversed, speed, theme, w, maxConcurrency); err != nil {
+			status = 500
+			w.Header().Set("Cache-Control", "no-cache")
+			http.Error(w, err.Error(), status)
+			return
+		}
+
+		status = 200
+	}
 }
