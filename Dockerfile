@@ -1,12 +1,15 @@
+# Build from repository root:
+#   docker build -t giflichess:latest .
 FROM golang:1.21-bookworm
-RUN mkdir /app
 WORKDIR /app
 
-RUN apt update && apt install inkscape imagemagick git -y
+RUN apt-get update && apt-get install -y --no-install-recommends inkscape imagemagick git \
+    && rm -rf /var/lib/apt/lists/*
 
-ADD . .
+COPY . .
 
-RUN go build -o giflichess
+RUN go build -o giflichess .
 
 EXPOSE 8080
 ENTRYPOINT ["./giflichess"]
+CMD ["serve", "--port", "8080", "--concurrency", "10"]

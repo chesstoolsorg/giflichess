@@ -79,12 +79,23 @@ This application is configured for easy Heroku deployment using `heroku.yml`:
 
 ### Local Deployment 
 
-# Build and run the server:
+Build and run the server from the repo root (working directory must contain `./static`; templates ship inside the binary):
 
-- from repo root
-go build -o giflichess ./...
-- run server on port 8080 with default concurrency
+```bash
+go build -o giflichess .
 ./giflichess serve --port 8080 --concurrency 10
-
-# Run with go run
+# or
 go run main.go serve --port 8080 --concurrency 10
+```
+
+Override static files directory if needed:
+
+```bash
+GIFCHESS_STATIC_DIR=/path/to/static ./giflichess serve --port 8080
+```
+
+### Web UI layout (self-contained)
+
+- **Home HTML**: `server/templates/index.gohtml` composes `partials/nav.gohtml` and `partials/footer.gohtml` (`{{template "nav" .}}`, etc.).
+- **Shared chrome**: Edit nav/footer in `server/templates/partials/` only.
+- **CSS / JS**: `static/css/` (`theme.css`, `theme-root.css`) and `static/js/` (`tailwind-shell.js`, `shell.js`). Served at `/css/*` and `/js/*`.

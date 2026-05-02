@@ -1,8 +1,10 @@
 package server
 
 import (
+	"embed"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
@@ -16,19 +18,56 @@ import (
 	"github.com/notnil/chess"
 )
 
+//go:embed templates/index.gohtml templates/partials/nav.gohtml templates/partials/footer.gohtml
+var homeTemplates embed.FS
+
+func staticDir() string {
+	d := os.Getenv("GIFCHESS_STATIC_DIR")
+	if d != "" {
+		return d
+	}
+	return "./static"
+}
+
 // Serve starts a server
 func Serve(port, maxConcurrency int) {
-	// Serve static files
-	http.Handle("/", http.FileServer(http.Dir("./static/")))
+	tpl, err := template.ParseFS(homeTemplates,
+		"templates/index.gohtml",
+		"templates/partials/nav.gohtml",
+		"templates/partials/footer.gohtml",
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// API endpoints
-	http.HandleFunc("/api/ping", pingHandler)
-	http.HandleFunc("/api/lichess/", lichessGifHandler(maxConcurrency))
-	http.HandleFunc("/api/pgn", pgnHandler(maxConcurrency))
+	staticRoot := staticDir()
+	fileServer := http.FileServer(http.Dir(staticRoot))
+	log.Printf("static files from %s\n", staticRoot)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/ping", pingHandler)
+	mux.HandleFunc("/api/lichess/", lichessGifHandler(maxConcurrency))
+	mux.HandleFunc("/api/pgn", pgnHandler(maxConcurrency))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+			if err := tpl.ExecuteTemplate(w, "home", nil); err != nil {
+				log.Printf("home template: %v", err)
+				http.Error(w, "internal error", http.StatusInternalServerError)
+			}
+			return
+		}
+		p := r.URL.Path
+		if strings.HasSuffix(p, ".html") {
+			w.Header().Set("Cache-Control", "no-cache, must-revalidate")
+		}
+		fileServer.ServeHTTP(w, r)
+	})
 
 	log.Printf("starting %s server on port %v with concurrency=%v\n", env(), port, maxConcurrency)
 	log.Printf("Web UI available at: http://localhost:%v\n", port)
-	http.ListenAndServe(":"+strconv.Itoa(port), nil)
+	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(port), mux))
 }
 
 func pingHandler(w http.ResponseWriter, r *http.Request) {
