@@ -97,5 +97,5 @@ GIFCHESS_STATIC_DIR=/path/to/static ./giflichess serve --port 8080
 ### Web UI layout (self-contained)
 
 - **Home HTML**: `server/templates/index.gohtml` composes `partials/nav.gohtml` and `partials/footer.gohtml` (`{{template "nav" .}}`, etc.).
-- **Shared chrome**: Edit nav/footer in `server/templates/partials/` only.
-- **CSS / JS**: `static/css/` (`theme.css`, `theme-root.css`) and `static/js/` (`tailwind-shell.js`, `shell.js`). Served at `/css/*` and `/js/*`.
+- **Chrome**: Edit nav/footer in `server/templates/partials/` only. There is no symlink or vendored `chesstools-ui` tree; everything under `static/` ships in this repository.
+- **Assets**: `static/chesstools.svg` (logo), `static/css/` (`theme.css`, `theme-root.css`), `static/js/` (`tailwind-shell.js`, `shell.js`). Served at `/chesstools.svg`, `/css/*`, and `/js/*`.
